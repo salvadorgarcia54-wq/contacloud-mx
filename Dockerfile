@@ -4,6 +4,7 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
 COPY frontend/ ./
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 RUN npm run build
 
 # Etapa 2: Servidor Backend (FastAPI + Uvicorn) sirviendo el Frontend compilado

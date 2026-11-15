@@ -52,7 +52,13 @@ if %errorlevel% neq 0 (
     git config --global user.email "salvadorgarcia54-wq@users.noreply.github.com"
 )
 
-echo [2/4] Agregando todos los cambios recientes de Iterumx al repositorio...
+echo [2/4] Consolidando base de datos local y agregando cambios de Iterumx...
+if exist "backend\.venv\Scripts\python.exe" (
+    "backend\.venv\Scripts\python.exe" -c "import sqlite3; c=sqlite3.connect('backend/contacloud.db'); c.execute('PRAGMA wal_checkpoint(FULL)'); c.close()" 2>nul
+)
+if exist "backend\contacloud.db" (
+    copy /Y "backend\contacloud.db" "contacloud.db" >nul 2>nul
+)
 git init
 git add -A
 git commit -m "Actualizacion Iterumx lista para produccion"
