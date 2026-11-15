@@ -31,12 +31,22 @@ import FiscalValidador69b from './pages/FiscalValidador69b';
 import AuditLog from './pages/AuditLog';
 import TempPasswords from './pages/TempPasswords';
 import TechnicalSupport from './pages/TechnicalSupport';
+import SaasLanding from './pages/SaasLanding';
+import SaasRegister from './pages/SaasRegister';
+import SaasSubscription from './pages/SaasSubscription';
+import SaasAdminConsole from './pages/SaasAdminConsole';
+import { TermsAndConditionsPage, PrivacyNoticePage } from './pages/LegalPages';
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          <Route path="/landing" element={<SaasLanding />} />
+          <Route path="/planes" element={<SaasLanding />} />
+          <Route path="/terminos-y-condiciones" element={<TermsAndConditionsPage />} />
+          <Route path="/aviso-de-privacidad" element={<PrivacyNoticePage />} />
+          <Route path="/register" element={<SaasRegister />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cfdi-viewer/:uuid" element={<CfdiViewer />} />
           <Route path="/journal-viewer/:entryId" element={<JournalViewer />} />
@@ -47,6 +57,8 @@ function App() {
             <Route path="users" element={<StaffUsers />} />
             <Route path="temp-passwords" element={<TempPasswords />} />
             <Route path="audit-log" element={<AuditLog />} />
+            <Route path="saas-subscription" element={<SaasSubscription />} />
+            <Route path="saas-console" element={<SaasAdminConsole />} />
             <Route path="accounts/:clientId" element={<ChartOfAccounts />} />
             <Route path="journal/:clientId" element={<JournalEntries />} />
             <Route path="cfdi-upload/:clientId" element={<CfdiUpload />} />

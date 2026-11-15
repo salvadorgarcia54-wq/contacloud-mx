@@ -5,7 +5,7 @@ from typing import Optional, List
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 
-from database import get_db, ensure_user_columns
+from database import get_db, ensure_user_columns, get_effective_owner_id
 from models.audit_log import AuditLog
 from models.user import User
 from models.client import Client
@@ -59,9 +59,23 @@ def _ensure_durations_populated(db: Session):
         db.rollback()
 
 
+def _get_tenant_user_ids(db: Session, current_user: User) -> List[int]:
+    owner_id = get_effective_owner_id(db, current_user)
+    rows = (
+        db.query(User.id)
+        .filter((User.id == owner_id) | (User.owner_user_id == owner_id))
+        .all()
+    )
+    ids = [int(r[0]) for r in rows]
+    if current_user.id not in ids:
+        ids.append(int(current_user.id))
+    return ids
+
+
 def _apply_common_filters(
     query,
     current_user: User,
+    db: Optional[Session] = None,
     user_id: Optional[int] = None,
     client_id: Optional[int] = None,
     module: Optional[str] = None,
@@ -70,6 +84,10 @@ def _apply_common_filters(
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
 ):
+    if db is not None:
+        tenant_uids = _get_tenant_user_ids(db, current_user)
+        query = query.filter(AuditLog.user_id.in_(tenant_uids))
+
     if current_user.role == "accountant":
         query = query.filter(AuditLog.user_id == current_user.id)
     elif user_id:
@@ -133,6 +151,7 @@ def get_audit_logs(
     query = _apply_common_filters(
         db.query(AuditLog),
         current_user=current_user,
+        db=db,
         user_id=user_id,
         client_id=client_id,
         module=module,
@@ -175,6 +194,7 @@ def get_time_analytics(
     query = _apply_common_filters(
         db.query(AuditLog),
         current_user=current_user,
+        db=db,
         user_id=user_id,
         client_id=client_id,
         module=module,
@@ -426,15 +446,34 @@ def get_audit_stats(
     current_user: User = Depends(require_role("admin")),
 ):
     _ensure_durations_populated(db)
+    tenant_uids = _get_tenant_user_ids(db, current_user)
+    owner_id = get_effective_owner_id(db, current_user)
     now = datetime.utcnow()
     since_date = now - timedelta(days=days)
     today_start = datetime(now.year, now.month, now.day)
 
-    total_all = db.query(func.count(AuditLog.id)).scalar() or 0
-    total_period = db.query(func.count(AuditLog.id)).filter(AuditLog.created_at >= since_date).scalar() or 0
-    total_today = db.query(func.count(AuditLog.id)).filter(AuditLog.created_at >= today_start).scalar() or 0
+    total_all = db.query(func.count(AuditLog.id)).filter(AuditLog.user_id.in_(tenant_uids)).scalar() or 0
+    total_period = (
+        db.query(func.count(AuditLog.id))
+        .filter(AuditLog.user_id.in_(tenant_uids), AuditLog.created_at >= since_date)
+        .scalar()
+        or 0
+    )
+    total_today = (
+        db.query(func.count(AuditLog.id))
+        .filter(AuditLog.user_id.in_(tenant_uids), AuditLog.created_at >= today_start)
+        .scalar()
+        or 0
+    )
 
-    users_db = db.query(User).filter(User.role.in_(["admin", "accountant"])).all()
+    users_db = (
+        db.query(User)
+        .filter(
+            User.role.in_(["admin", "accountant"]),
+            (User.id == owner_id) | (User.owner_user_id == owner_id),
+        )
+        .all()
+    )
     user_stats = []
 
     for u in users_db:
@@ -481,14 +520,20 @@ def get_audit_stats(
 
     module_counts_query = (
         db.query(AuditLog.module, func.count(AuditLog.id))
-        .filter(AuditLog.created_at >= since_date)
+        .filter(AuditLog.user_id.in_(tenant_uids), AuditLog.created_at >= since_date)
         .group_by(AuditLog.module)
         .order_by(desc(func.count(AuditLog.id)))
         .all()
     )
     module_stats = [{"module": m, "count": c} for m, c in module_counts_query]
 
-    recent_query = db.query(AuditLog).order_by(desc(AuditLog.created_at)).limit(15).all()
+    recent_query = (
+        db.query(AuditLog)
+        .filter(AuditLog.user_id.in_(tenant_uids))
+        .order_by(desc(AuditLog.created_at))
+        .limit(15)
+        .all()
+    )
     recent_logs = [AuditLogResponse.from_orm(it) for it in recent_query]
 
     return {

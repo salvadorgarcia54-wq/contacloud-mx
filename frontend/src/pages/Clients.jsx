@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Table, Button, Input, Modal, Form, Select, Popconfirm, Tag, message, Space, Alert, Tooltip, Upload } from 'antd';
 import {
   EditOutlined, DeleteOutlined, PlusOutlined, UserAddOutlined, BookOutlined,
-  CloudDownloadOutlined, CloudUploadOutlined, InboxOutlined, KeyOutlined
+  CloudDownloadOutlined, CloudUploadOutlined, InboxOutlined, KeyOutlined, EyeOutlined, LockOutlined
 } from '@ant-design/icons';
 import { clientsApi, authApi } from '../api/client';
 import { useClient } from '../components/Layout';
@@ -58,7 +58,10 @@ const formatTaxRegimeDisplay = (rawRegime, rfc) => {
 const Clients = () => {
   const { refreshClients, setSelectedClient } = useClient();
   const { user } = useAuth();
-  const canCreateClients = user?.role === 'admin' || Boolean(user?.can_create_clients);
+  const [freshUserPerms, setFreshUserPerms] = useState(null);
+  const effectiveUser = freshUserPerms || user;
+  const canCreateClients = effectiveUser?.role === 'admin' || Boolean(effectiveUser?.can_create_clients);
+  const canEditClients = effectiveUser?.role === 'admin' || Boolean(effectiveUser?.can_create_clients);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -96,6 +99,9 @@ const Clients = () => {
         user?.role !== 'admin' ? authApi.getMe().catch(() => ({ data: user })) : Promise.resolve({ data: user }),
       ]);
       const freshUser = meRes?.data || user;
+      if (freshUser) {
+        setFreshUserPerms(freshUser);
+      }
       let list = response.data || [];
       if (freshUser && freshUser.role !== 'admin') {
         const allowedIds = new Set((freshUser.assigned_client_ids || []).map(Number));
@@ -350,8 +356,11 @@ const Clients = () => {
       key: 'actions',
       render: (_, record) => (
         <Space size="small">
-          <Tooltip title="Editar cliente">
-            <Button icon={<EditOutlined />} onClick={() => showClientModal(record)} />
+          <Tooltip title={canEditClients ? "Editar cliente" : "Ver información del cliente (Solo lectura)"}>
+            <Button
+              icon={canEditClients ? <EditOutlined /> : <EyeOutlined />}
+              onClick={() => showClientModal(record)}
+            />
           </Tooltip>
           <Tooltip title="Dar de baja cliente (Requiere contraseña temporal de 32 dígitos)">
             <Button danger icon={<DeleteOutlined />} onClick={() => openBajaClientModal(record)} />
@@ -417,13 +426,39 @@ const Clients = () => {
       />
 
       <Modal
-        title={editingClient ? 'Editar Cliente' : 'Nuevo Cliente'}
+        title={
+          editingClient
+            ? canEditClients
+              ? 'Editar Cliente'
+              : 'Información del Cliente (Solo Lectura)'
+            : 'Nuevo Cliente'
+        }
         open={isClientModalVisible}
         onOk={handleSaveClient}
         onCancel={() => setIsClientModalVisible(false)}
         confirmLoading={loading}
+        okText={editingClient ? 'Guardar Cambios' : 'Crear Cliente'}
+        cancelText="Cerrar"
+        footer={
+          editingClient && !canEditClients
+            ? [
+                <Button key="close" type="primary" onClick={() => setIsClientModalVisible(false)}>
+                  Cerrar
+                </Button>,
+              ]
+            : undefined
+        }
       >
-        <Form form={form} layout="vertical">
+        {editingClient && !canEditClients && (
+          <Alert
+            type="info"
+            showIcon
+            icon={<LockOutlined />}
+            className="mb-4 text-xs"
+            message="Modo de solo consulta: Como auxiliar no cuenta con permiso para modificar los datos del cliente. Solicite autorización al titular del despacho si requiere actualizar esta información."
+          />
+        )}
+        <Form form={form} layout="vertical" disabled={Boolean(editingClient && !canEditClients)}>
           <Form.Item name="rfc" label="RFC" rules={[{ required: true }]}>
             <Input />
           </Form.Item>

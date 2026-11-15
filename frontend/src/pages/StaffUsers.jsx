@@ -874,10 +874,13 @@ const StaffUsers = () => {
                     </Space>
                   </div>
 
-                  <div className="mb-3">
+                  <div className="mb-3 max-w-[72%]">
                     <Select
                       mode="multiple"
                       allowClear
+                      listHeight={115}
+                      maxTagCount={2}
+                      maxTagPlaceholder={(omittedValues) => `+${omittedValues.length} cliente(s) más`}
                       placeholder="Seleccione los clientes asignados a este auxiliar..."
                       style={{ width: '100%' }}
                       value={selectedAssignedClientIds}

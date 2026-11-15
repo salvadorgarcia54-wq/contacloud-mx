@@ -1392,7 +1392,21 @@ const FiscalIeps = () => {
                 {
                   key: 'emitidos',
                   label: (
-                    <span className="font-semibold">
+                    <span
+                      className="font-semibold text-sm px-3.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-all"
+                      style={
+                        activeTab === 'emitidos'
+                          ? {
+                              backgroundColor: '#1E2C5E',
+                              color: '#ffffff',
+                              boxShadow: '0 2px 6px rgba(30, 44, 94, 0.25)',
+                            }
+                          : {
+                              backgroundColor: '#e2e8f0',
+                              color: '#334155',
+                            }
+                      }
+                    >
                       📤 CFDI Emitidos con IEPS ({emitidosAll.length})
                     </span>
                   ),
@@ -1444,7 +1458,21 @@ const FiscalIeps = () => {
                 {
                   key: 'recibidos',
                   label: (
-                    <span className="font-semibold">
+                    <span
+                      className="font-semibold text-sm px-3.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-all"
+                      style={
+                        activeTab === 'recibidos'
+                          ? {
+                              backgroundColor: '#1E2C5E',
+                              color: '#ffffff',
+                              boxShadow: '0 2px 6px rgba(30, 44, 94, 0.25)',
+                            }
+                          : {
+                              backgroundColor: '#e2e8f0',
+                              color: '#334155',
+                            }
+                      }
+                    >
                       📥 CFDI Recibidos con IEPS ({recibidosAll.length})
                     </span>
                   ),
@@ -1493,7 +1521,21 @@ const FiscalIeps = () => {
                 {
                   key: 'informativa',
                   label: (
-                    <span className="font-semibold text-indigo-700">
+                    <span
+                      className="font-semibold text-sm px-3.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-all"
+                      style={
+                        activeTab === 'informativa'
+                          ? {
+                              backgroundColor: '#1E2C5E',
+                              color: '#ffffff',
+                              boxShadow: '0 2px 6px rgba(30, 44, 94, 0.25)',
+                            }
+                          : {
+                              backgroundColor: '#e2e8f0',
+                              color: '#334155',
+                            }
+                      }
+                    >
                       <FileDoneOutlined className="mr-1" />
                       Declaraciones Informativas IEPS (MULTI-IEPS)
                     </span>

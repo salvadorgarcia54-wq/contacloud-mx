@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { Layout as AntLayout, Select, Button, Modal, Form, Input, message, theme, Tooltip, Avatar } from 'antd';
-import { LogoutOutlined, UserOutlined, KeyOutlined, ReloadOutlined, HomeOutlined, LockOutlined } from '@ant-design/icons';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Layout as AntLayout, Select, Button, Modal, Form, Input, message, theme, Tooltip, Avatar, Tag } from 'antd';
+import { LogoutOutlined, UserOutlined, KeyOutlined, ReloadOutlined, HomeOutlined, LockOutlined, CrownOutlined, CreditCardOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { Outlet, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import IterumbotWidget from './IterumbotWidget';
 import { useAuth } from '../contexts/AuthContext';
-import { clientsApi, authApi } from '../api/client';
+import { clientsApi, authApi, saasApi } from '../api/client';
 
 const { Header, Content } = AntLayout;
 
@@ -39,6 +40,19 @@ export const Layout = () => {
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordForm] = Form.useForm();
+  const [tenantInfo, setTenantInfo] = useState(null);
+  const isSaasSuperAdmin = String(user?.username || '').trim().toLowerCase() === 'sgadmin';
+
+  useEffect(() => {
+    if (user && user.role === 'admin' && !isSaasSuperAdmin) {
+      saasApi
+        .getOverview()
+        .then((res) => setTenantInfo(res.data?.tenant || null))
+        .catch(() => {});
+    } else {
+      setTenantInfo(null);
+    }
+  }, [user, location.pathname, isSaasSuperAdmin]);
 
   const {
     token: { colorBgContainer },
@@ -68,6 +82,9 @@ export const Layout = () => {
   }, []);
 
   const loadClients = useCallback(async () => {
+    if (isSaasSuperAdmin) {
+      return;
+    }
     if (user?.role === 'client') {
       if (user?.client_id) {
         setSelectedClient(String(user.client_id));
@@ -103,7 +120,7 @@ export const Layout = () => {
     } finally {
       setLoadingClients(false);
     }
-  }, [user, setSelectedClient]);
+  }, [user, setSelectedClient, isSaasSuperAdmin]);
 
   useEffect(() => {
     loadClients();
@@ -158,7 +175,7 @@ export const Layout = () => {
             }}
           >
             <div className="flex items-center gap-3">
-              {user?.role !== 'client' && (
+              {user?.role !== 'client' && !isSaasSuperAdmin && (
                 isHomePage ? (
                   <>
                     <Select
@@ -212,6 +229,27 @@ export const Layout = () => {
             </div>
             
             <div className="flex items-center gap-3">
+              <Tooltip title="Abrir la Landing Page pública de Iterumx">
+                <Tag
+                  color="blue"
+                  onClick={() => navigate('/landing')}
+                  className="cursor-pointer font-normal m-0 px-2.5 py-1 hidden md:inline-flex items-center gap-1"
+                >
+                  Landing Page
+                </Tag>
+              </Tooltip>
+              {user?.role === 'admin' && !isSaasSuperAdmin && (
+                <Tooltip title="Ver estado de tu Suscripción y Consumo en Iterumx">
+                  <Tag
+                    color="green"
+                    icon={<CrownOutlined />}
+                    onClick={() => navigate('/saas-subscription')}
+                    className="cursor-pointer font-semibold m-0 px-2.5 py-1 hidden md:inline-flex items-center gap-1"
+                  >
+                    Mi Suscripción
+                  </Tag>
+                </Tooltip>
+              )}
               <div className="flex items-center gap-2 font-medium text-gray-700 leading-tight">
                 <Avatar
                   size={32}
@@ -243,9 +281,53 @@ export const Layout = () => {
               </Button>
             </div>
           </Header>
+
+          {user?.role === 'admin' && !isSaasSuperAdmin && tenantInfo && (tenantInfo.status === 'trial' || tenantInfo.status === 'past_due' || tenantInfo.trial_expired) && (
+            <div
+              className="mx-4 mt-3 px-4 py-2 rounded-lg flex flex-wrap items-center justify-between gap-2 text-xs text-white shadow-sm"
+              style={{
+                background:
+                  tenantInfo.trial_expired || tenantInfo.status === 'past_due'
+                    ? 'linear-gradient(90deg, #b91c1c 0%, #7f1d1d 100%)'
+                    : 'linear-gradient(90deg, #1E2C5E 0%, #312e81 100%)',
+              }}
+            >
+              <div className="flex items-center gap-2 font-medium">
+                <ClockCircleOutlined />
+                <span>
+                  {tenantInfo.trial_expired || tenantInfo.status === 'past_due'
+                    ? 'Tu periodo de prueba de 14 días ha vencido. Activa tu suscripción en la pasarela de pago para continuar operando sin interrupciones.'
+                    : `Prueba Gratuita 14 días activa (${
+                        tenantInfo.trial_days_remaining !== null && tenantInfo.trial_days_remaining !== undefined
+                          ? `Quedan ${tenantInfo.trial_days_remaining} días`
+                          : `Vence el ${tenantInfo.trial_ends_at}`
+                      }) — Al finalizar podrás domiciliar tu plan.`}
+                </span>
+              </div>
+              <Button
+                size="small"
+                icon={<CreditCardOutlined />}
+                onClick={() => navigate('/saas-subscription')}
+                style={{
+                  backgroundColor: '#635BFF',
+                  color: '#fff',
+                  borderColor: '#635BFF',
+                  fontWeight: 400,
+                }}
+              >
+                Activar Plan
+              </Button>
+            </div>
+          )}
+
           <Content style={{ margin: '24px 16px', padding: 24, background: colorBgContainer, minHeight: 280, borderRadius: 8 }}>
-            <Outlet />
+            {isSaasSuperAdmin && location.pathname !== '/saas-console' ? (
+              <Navigate to="/saas-console" replace />
+            ) : (
+              <Outlet />
+            )}
           </Content>
+          {!isSaasSuperAdmin && <IterumbotWidget />}
         </AntLayout>
       </AntLayout>
 

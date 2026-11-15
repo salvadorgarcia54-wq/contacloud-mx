@@ -8,7 +8,7 @@ from decimal import Decimal
 import json
 import os
 
-from database import get_db
+from database import get_db, get_effective_owner_id, ensure_user_columns
 from models.user import User
 from models.client import Client
 from models.account import Account
@@ -20,6 +20,8 @@ from schemas.client import ClientCreate, ClientUpdate, ClientResponse
 from schemas.user import UserCreate, UserResponse
 from routers.auth import require_role, get_password_hash
 from services.audit import log_activity
+
+ensure_user_columns()
 
 router = APIRouter(prefix="/api/clients", tags=["clients"])
 
@@ -36,7 +38,11 @@ def get_clients(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin", "accountant"))
 ):
-    query = db.query(Client).filter(Client.is_active == True)
+    owner_id = get_effective_owner_id(db, current_user)
+    query = db.query(Client).filter(
+        Client.is_active == True,
+        Client.owner_user_id == owner_id,
+    )
     if (current_user.role or "").strip().lower() != "admin":
         assigned_ids = [
             int(x) for x in (current_user.assigned_client_ids or [])
@@ -59,11 +65,16 @@ def get_client(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin", "accountant"))
 ):
+    owner_id = get_effective_owner_id(db, current_user)
     if current_user.role == "accountant":
         assigned_ids = current_user.assigned_client_ids or []
         if client_id not in assigned_ids:
             raise HTTPException(status_code=403, detail="No tiene asignado este cliente para trabajar")
-    client = db.query(Client).filter(Client.id == client_id, Client.is_active == True).first()
+    client = db.query(Client).filter(
+        Client.id == client_id,
+        Client.is_active == True,
+        Client.owner_user_id == owner_id,
+    ).first()
     if not client:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
     return client
@@ -74,7 +85,11 @@ def _save_new_client(client_data: ClientCreate, db: Session, current_user: User)
             status_code=403,
             detail="No tiene permiso para dar de alta nuevos clientes. Solicite autorización al titular del despacho."
         )
-    count = db.query(Client).filter(Client.is_active == True).count()
+    owner_id = get_effective_owner_id(db, current_user)
+    count = db.query(Client).filter(
+        Client.is_active == True,
+        Client.owner_user_id == owner_id,
+    ).count()
     if count >= 999:
         raise HTTPException(status_code=400, detail="Límite máximo de clientes alcanzado (999)")
         
@@ -82,8 +97,9 @@ def _save_new_client(client_data: ClientCreate, db: Session, current_user: User)
     existing = db.query(Client).filter(Client.rfc == clean_rfc).first()
     if existing:
         if not existing.is_active:
-            # Reactivate client
+            # Reactivate client and assign to current tenant owner
             existing.is_active = True
+            existing.owner_user_id = owner_id
             existing.business_name = client_data.business_name
             existing.legal_name = client_data.legal_name
             existing.tax_regime = client_data.tax_regime
@@ -104,6 +120,7 @@ def _save_new_client(client_data: ClientCreate, db: Session, current_user: User)
     client_dict = client_data.dict()
     client_dict.pop('status', None)
     client_dict['rfc'] = clean_rfc
+    client_dict['owner_user_id'] = owner_id
     if client_data.status == 'inactivo':
         client_dict['is_active'] = False
         
@@ -148,7 +165,13 @@ def update_client(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin", "accountant"))
 ):
-    client = db.query(Client).filter(Client.id == client_id).first()
+    if current_user.role != "admin" and not bool(current_user.can_create_clients):
+        raise HTTPException(
+            status_code=403,
+            detail="No cuenta con permiso para modificar la información del cliente. Solicite autorización al titular del despacho."
+        )
+    owner_id = get_effective_owner_id(db, current_user)
+    client = db.query(Client).filter(Client.id == client_id, Client.owner_user_id == owner_id).first()
     if not client:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
         
@@ -180,6 +203,7 @@ def delete_client(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin", "accountant"))
 ):
+    owner_id = get_effective_owner_id(db, current_user)
     if not temp_password or not temp_password.strip():
         raise HTTPException(
             status_code=403,
@@ -188,7 +212,7 @@ def delete_client(
     from routers.temp_passwords import validate_and_consume_temp_password
     tp = validate_and_consume_temp_password(db, temp_password, target_client_id=client_id)
 
-    client = db.query(Client).filter(Client.id == client_id).first()
+    client = db.query(Client).filter(Client.id == client_id, Client.owner_user_id == owner_id).first()
     if not client:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
     client.is_active = False

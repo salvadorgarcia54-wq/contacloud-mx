@@ -5,7 +5,7 @@ from sqlalchemy import func
 from typing import Optional, List
 from datetime import datetime
 
-from database import get_db, engine, Base
+from database import get_db, engine, Base, get_effective_owner_id
 from models.user import User
 from models.client import Client
 from models.support_ticket import SupportTicket, SupportConfig
@@ -46,9 +46,9 @@ def _get_or_create_config(db: Session) -> SupportConfig:
     cfg = db.query(SupportConfig).first()
     if not cfg:
         cfg = SupportConfig(
-            support_name="Mesa de Ayuda — García Salas Asesores de Negocio",
+            support_name="Mesa de Ayuda — Iterumx",
             whatsapp_number="5215500000000",
-            support_email="soporte@garciasalas.mx",
+            support_email="soporte@iterumx.com",
             support_phone="(55) 0000-0000",
             business_hours="Lunes a Viernes de 9:00 a 18:00 hrs",
             remote_tool="AnyDesk / TeamViewer",
@@ -86,8 +86,35 @@ def get_support_info(
     current_user: User = Depends(get_current_user),
 ):
     cfg = _get_or_create_config(db)
-    total_clients = db.query(func.count(Client.id)).scalar() or 0
-    open_tickets = db.query(func.count(SupportTicket.id)).filter(SupportTicket.status.in_(["Abierto", "En Proceso"])).scalar() or 0
+    is_super_admin = (current_user.username or "").strip().lower() == "admin"
+    owner_id = get_effective_owner_id(db, current_user)
+    if is_super_admin:
+        total_clients = db.query(func.count(Client.id)).filter(Client.is_active == True).scalar() or 0
+        open_tickets = (
+            db.query(func.count(SupportTicket.id))
+            .filter(SupportTicket.status.in_(["Abierto", "En Proceso"]))
+            .scalar()
+            or 0
+        )
+    else:
+        total_clients = (
+            db.query(func.count(Client.id))
+            .filter(Client.is_active == True, Client.owner_user_id == owner_id)
+            .scalar()
+            or 0
+        )
+        tenant_uids = [
+            uid for (uid,) in db.query(User.id).filter((User.id == owner_id) | (User.owner_user_id == owner_id)).all()
+        ]
+        open_tickets = (
+            db.query(func.count(SupportTicket.id))
+            .filter(
+                SupportTicket.user_id.in_(tenant_uids or [current_user.id]),
+                SupportTicket.status.in_(["Abierto", "En Proceso"]),
+            )
+            .scalar()
+            or 0
+        )
 
     return {
         "config": {
@@ -99,9 +126,9 @@ def get_support_info(
             "remote_tool": cfg.remote_tool,
         },
         "diagnostics": {
-            "api_status": "Operativo (En línea)",
-            "db_status": "Conectada (SQLite Local)",
-            "app_version": "ContaCloud MX v1.2",
+            "api_status": "Operativo (Iterumx Cloud)",
+            "db_status": "Conectada (Multi-Empresa)",
+            "app_version": "Iterumx v2.0",
             "total_clients": total_clients,
             "open_tickets": open_tickets,
             "server_time": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
@@ -154,8 +181,15 @@ def list_support_tickets(
     current_user: User = Depends(get_current_user),
 ):
     query = db.query(SupportTicket)
+    is_super_admin = (current_user.username or "").strip().lower() == "admin"
     if current_user.role == "client":
         query = query.filter(SupportTicket.user_id == current_user.id)
+    elif not is_super_admin:
+        owner_id = get_effective_owner_id(db, current_user)
+        tenant_uids = [
+            uid for (uid,) in db.query(User.id).filter((User.id == owner_id) | (User.owner_user_id == owner_id)).all()
+        ]
+        query = query.filter(SupportTicket.user_id.in_(tenant_uids or [current_user.id]))
     if status and status != "all":
         query = query.filter(SupportTicket.status == status)
 

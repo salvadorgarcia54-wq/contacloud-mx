@@ -134,9 +134,7 @@ export const exportToPdfWithLogo = ({
     minute: '2-digit',
   });
 
-  const resolvedLogoUrl = logoImg.startsWith('http')
-    ? logoImg
-    : `${window.location.origin}${logoImg.startsWith('/') ? '' : '/'}${logoImg}`;
+  const resolvedLogoUrl = `${window.location.origin}/logo.svg`;
 
   const summaryHtml =
     resolvedSummary && resolvedSummary.length > 0
@@ -243,9 +241,9 @@ export const exportToPdfWithLogo = ({
           <div class="page-body">
             <div class="header-banner">
               <div class="brand-left">
-                <img src="${resolvedLogoUrl}" alt="Garcia Salas" class="brand-logo" />
+                <img src="${resolvedLogoUrl}" alt="Iterumx" class="brand-logo" />
                 <div class="brand-titles">
-                  <div class="firm-name">Garcia Salas — Asesores de Negocio</div>
+                  <div class="firm-name">Iterumx — Plataforma Contable y Fiscal</div>
                   <h1 class="report-title">${escapeHtml(title)}</h1>
                   ${subtitle ? `<div class="report-subtitle">${escapeHtml(subtitle)}</div>` : ''}
                 </div>
@@ -281,7 +279,7 @@ export const exportToPdfWithLogo = ({
                 </div>
                 <div class="sig-box">
                   <strong>REVISÓ</strong><br/>
-                  Garcia Salas — Asesores de Negocio
+                  Iterumx — Contabilidad Fiscal
                 </div>
                 <div class="sig-box">
                   <strong>AUTORIZÓ</strong><br/>
@@ -295,7 +293,7 @@ export const exportToPdfWithLogo = ({
           </div>
 
           <div class="page-footer">
-            <span>Garcia Salas — Asesores de Negocio &nbsp;|&nbsp; ${escapeHtml(resolvedClientName)} (${escapeHtml(resolvedClientRfc)})</span>
+            <span>Iterumx &nbsp;|&nbsp; ${escapeHtml(resolvedClientName)} (${escapeHtml(resolvedClientRfc)})</span>
             <span class="page-footer-num">Página ${pageNum} de ${totalPages}</span>
           </div>
         </div>

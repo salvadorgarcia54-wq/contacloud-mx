@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Select, Button, Typography, Alert, Card, Spin, Space, Switch, Tooltip 
+  Select, Button, Typography, Alert, Card, Spin, Space
 } from 'antd';
 import { 
   PrinterOutlined, SearchOutlined, ExportOutlined, FileTextOutlined, FileExcelOutlined, FilePdfOutlined
@@ -40,7 +40,6 @@ const IncomeStatement = () => {
   
   const [year, setYear] = useState(2026);
   const [month, setMonth] = useState(9); // Septiembre por defecto
-  const [showMinusSign, setShowMinusSign] = useState(true); // Estilo contable con signo (-) o positivo (+)
 
   useEffect(() => {
     if (clientId) {
@@ -268,12 +267,7 @@ const IncomeStatement = () => {
     if (val === undefined || val === null) return '0.00';
     const num = Number(val);
     if (Math.abs(num) < 0.001) return '0.00';
-
-    if (showMinusSign) {
-      return num > 0 ? `-${formatNum(num)}` : `${formatNum(Math.abs(num))}`;
-    } else {
-      return num < 0 ? `-${formatNum(Math.abs(num))}` : `${formatNum(num)}`;
-    }
+    return num < 0 ? `-${formatNum(Math.abs(num))}` : `${formatNum(num)}`;
   };
 
   const handleExportCSV = () => {
@@ -410,16 +404,6 @@ const IncomeStatement = () => {
             </Text>
           </div>
           <Space>
-            <Tooltip title="Alternar visualización de signo negativo (-) o positivo (+)">
-              <div className="flex items-center gap-2 border border-gray-200 px-3 py-1 rounded bg-gray-50 text-xs font-medium">
-                <span>Signo (-):</span>
-                <Switch 
-                  size="small"
-                  checked={showMinusSign} 
-                  onChange={setShowMinusSign} 
-                />
-              </div>
-            </Tooltip>
             <Button
               type="primary"
               icon={<FileExcelOutlined />}

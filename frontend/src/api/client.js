@@ -2,6 +2,7 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: '/api',
+  timeout: 15000,
 });
 
 api.interceptors.request.use((config) => {
@@ -14,10 +15,23 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const originalConfig = error.config;
+    if (
+      originalConfig &&
+      !originalConfig._retriedDirect &&
+      (!error.response || error.response.status === 502 || error.response.status === 504)
+    ) {
+      originalConfig._retriedDirect = true;
+      originalConfig.baseURL = 'http://127.0.0.1:8000/api';
+      return api.request(originalConfig);
+    }
+
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('contacloud_token');
-      if (!window.location.pathname.includes('/login')) {
+      const pubPaths = ['/login', '/landing', '/planes', '/register'];
+      const isPublic = pubPaths.some((p) => window.location.pathname.includes(p));
+      if (!isPublic) {
         window.location.href = '/login';
       }
     }
@@ -147,6 +161,10 @@ export const reportsApi = {
     }
     return api.get(`/reports/account-ledger/${clientId}`, { params });
   },
+  executiveDashboard: (clientId, params = {}) =>
+    api.get(`/reports/executive-dashboard/${clientId}`, { params }),
+  portfolioObligations: (params = {}) =>
+    api.get('/reports/executive-portfolio-obligations', { params }),
 };
 
 export const bankApi = {
@@ -237,3 +255,29 @@ export const supportApi = {
   updateTicket: (id, data) => api.put(`/support/tickets/${id}`, data),
   deleteTicket: (id) => api.delete(`/support/tickets/${id}`),
 };
+
+export const saasApi = {
+  getPlans: () => api.get('/saas/plans'),
+  register: (data) => api.post('/saas/register', data),
+  getOverview: (params = {}) => api.get('/saas/overview', { params }),
+  changePlan: (data) => api.post('/saas/change-plan', data),
+  stripeCheckout: (data) => api.post('/saas/stripe/checkout', data),
+  updateTenantProfile: (data) => api.put('/saas/tenant-profile', data),
+  cancelSubscription: (data) => api.post('/saas/cancel-subscription', data),
+  reactivateSubscription: () => api.post('/saas/reactivate-subscription'),
+  listTenantsAdmin: () => api.get('/saas/admin/tenants'),
+  createTenantAdmin: (data) => api.post('/saas/admin/tenants', data),
+  updateTenantAdmin: (id, data) => api.put(`/saas/admin/tenants/${id}`, data),
+  getStripeConfigAdmin: () => api.get('/saas/admin/stripe-config'),
+  updateStripeConfigAdmin: (data) => api.put('/saas/admin/stripe-config', data),
+  getDemoVideoInfo: () => api.get('/assets/demo-video-info'),
+  saveDemoVideo: (formData) => api.post('/assets/demo-video', formData),
+  deleteDemoVideo: () => api.delete('/assets/demo-video'),
+};
+
+export const iterumbotApi = {
+  chat: (data) => api.post('/iterumbot/chat', data),
+  getAudit: (clientId, params = {}) => api.get(`/iterumbot/audit/${clientId}`, { params }),
+};
+
+export default api;

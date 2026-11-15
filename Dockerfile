@@ -22,6 +22,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ ./
 COPY --from=frontend-build /app/frontend/dist /app/frontend/dist
 COPY frontend/src/assets /app/frontend/src/assets
+COPY frontend/public /app/frontend/public
 
 ENV PORT=8000
 EXPOSE 8000

@@ -126,9 +126,9 @@ const TechnicalSupport = () => {
   }, [selectedClient, ticketForm]);
 
   const cfg = supportInfo?.config || {
-    support_name: 'Mesa de Ayuda — García Salas Asesores de Negocio',
+    support_name: 'Mesa de Ayuda — Iterumx',
     whatsapp_number: '5215500000000',
-    support_email: 'soporte@garciasalas.mx',
+    support_email: 'soporte@iterumx.com',
     support_phone: '(55) 0000-0000',
     business_hours: 'Lunes a Viernes de 9:00 a 18:00 hrs',
     remote_tool: 'AnyDesk / TeamViewer',
@@ -208,7 +208,7 @@ const TechnicalSupport = () => {
       clients.find((c) => c.value === String(selectedClient))?.label || 'Ninguno seleccionado';
     const text =
       `=== DIAGNÓSTICO TÉCNICO DEL SISTEMA ===\n` +
-      `Versión: ${diag.app_version || 'ContaCloud MX'}\n` +
+      `Versión: ${diag.app_version || 'Iterumx'}\n` +
       `Estado API: ${diag.api_status || 'Operativo'}\n` +
       `Base de Datos: ${diag.db_status || 'Conectada'}\n` +
       `Hora Servidor: ${diag.server_time || ''}\n` +
@@ -608,7 +608,7 @@ const TechnicalSupport = () => {
                   </span>
                 </div>
                 <div className="text-[11px] text-gray-500 mt-0.5">
-                  {diag.app_version || 'ContaCloud MX'} • {diag.db_status || 'SQLite Conectada'}
+                  {diag.app_version || 'Iterumx'} • {diag.db_status || 'Multi-Empresa Conectada'}
                 </div>
               </div>
               <ToolOutlined className="text-xl text-slate-600" />
@@ -634,7 +634,21 @@ const TechnicalSupport = () => {
             {
               key: 'tickets',
               label: (
-                <span className="font-semibold">
+                <span
+                  className="font-semibold text-sm px-3.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-all"
+                  style={
+                    activeTab === 'tickets'
+                      ? {
+                          backgroundColor: '#1E2C5E',
+                          color: '#ffffff',
+                          boxShadow: '0 2px 6px rgba(30, 44, 94, 0.25)',
+                        }
+                      : {
+                          backgroundColor: '#e2e8f0',
+                          color: '#334155',
+                        }
+                  }
+                >
                   🎫 Historial de Tickets de Soporte ({tickets.length})
                 </span>
               ),
@@ -681,7 +695,21 @@ const TechnicalSupport = () => {
             {
               key: 'nuevo',
               label: (
-                <span className="font-semibold text-blue-700">
+                <span
+                  className="font-semibold text-sm px-3.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-all"
+                  style={
+                    activeTab === 'nuevo'
+                      ? {
+                          backgroundColor: '#1E2C5E',
+                          color: '#ffffff',
+                          boxShadow: '0 2px 6px rgba(30, 44, 94, 0.25)',
+                        }
+                      : {
+                          backgroundColor: '#e2e8f0',
+                          color: '#334155',
+                        }
+                  }
+                >
                   <PlusOutlined className="mr-1" />
                   Levantar Nuevo Reporte / Ticket
                 </span>
@@ -805,7 +833,21 @@ const TechnicalSupport = () => {
             {
               key: 'faq',
               label: (
-                <span className="font-semibold">
+                <span
+                  className="font-semibold text-sm px-3.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-all"
+                  style={
+                    activeTab === 'faq'
+                      ? {
+                          backgroundColor: '#1E2C5E',
+                          color: '#ffffff',
+                          boxShadow: '0 2px 6px rgba(30, 44, 94, 0.25)',
+                        }
+                      : {
+                          backgroundColor: '#e2e8f0',
+                          color: '#334155',
+                        }
+                  }
+                >
                   <QuestionCircleOutlined className="mr-1" />
                   Guía Rápida y Preguntas Frecuentes
                 </span>

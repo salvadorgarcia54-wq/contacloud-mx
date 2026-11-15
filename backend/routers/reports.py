@@ -6,11 +6,13 @@ from datetime import date, datetime
 import calendar
 from collections import defaultdict
 
-from database import get_db
+from database import get_db, get_effective_owner_id
 from models.journal import JournalEntry, JournalLine
 from models.account import Account, SATAccountGroup
 from models.client import Client
 from models.user import User
+from models.cfdi import CFDIInvoice
+from models.fixed_asset import FixedAsset
 from routers.auth import require_role
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
@@ -1013,4 +1015,477 @@ def get_account_ledger(
         'subaccounts_detail': first_res['subaccounts_detail'] if first_res else [],
         'movements': first_res['movements'] if first_res else []
     }
+
+
+def _evaluate_client_obligations(db: Session, client_id: int, year: int, month: int) -> dict:
+    """
+    Evalúa el Semáforo de Obligaciones Contables y Fiscales de un cliente en un periodo (año/mes):
+    1. Balanza cuadrada
+    2. IVA traspasado
+    3. Depreciación aplicada
+    4. DIOT generada / lista
+    """
+    first_day = date(year, month, 1)
+    last_day = date(year, month, calendar.monthrange(year, month)[1])
+
+    # 1. Balanza cuadrada (cargos == abonos del periodo y acumulado)
+    period_totals = (
+        db.query(
+            func.sum(JournalLine.debit).label("deb"),
+            func.sum(JournalLine.credit).label("cred"),
+            func.count(func.distinct(JournalEntry.id)).label("entries_cnt"),
+        )
+        .join(JournalEntry, JournalLine.entry_id == JournalEntry.id)
+        .filter(
+            JournalEntry.client_id == client_id,
+            JournalEntry.date >= first_day,
+            JournalEntry.date <= last_day,
+            JournalEntry.is_cancelled == False,
+        )
+        .first()
+    )
+    p_deb = float(period_totals.deb or 0.0) if period_totals else 0.0
+    p_cred = float(period_totals.cred or 0.0) if period_totals else 0.0
+    entries_cnt = int(period_totals.entries_cnt or 0) if period_totals else 0
+    diff_balanza = round(abs(p_deb - p_cred), 2)
+
+    if entries_cnt == 0:
+        balanza_status = "pendiente"
+        balanza_label = "Sin movimientos en el mes"
+    elif diff_balanza <= 0.02:
+        balanza_status = "cumplido"
+        balanza_label = f"Cuadrada ({entries_cnt} pólizas)"
+    else:
+        balanza_status = "alerta"
+        balanza_label = f"Diferencia ${diff_balanza:,.2f}"
+
+    # 2. IVA traspasado
+    traspaso_entry = (
+        db.query(JournalEntry)
+        .filter(
+            JournalEntry.client_id == client_id,
+            JournalEntry.date >= first_day,
+            JournalEntry.date <= last_day,
+            JournalEntry.is_cancelled == False,
+            or_(
+                JournalEntry.description.ilike("%Traspasos de IVA%"),
+                JournalEntry.description.ilike("%Traspaso de IVA%"),
+                JournalEntry.reference.ilike("%TRASPASO-IVA%"),
+            ),
+        )
+        .first()
+    )
+    iva_movs_cnt = (
+        db.query(func.count(JournalLine.id))
+        .join(JournalEntry, JournalLine.entry_id == JournalEntry.id)
+        .join(Account, JournalLine.account_id == Account.id)
+        .filter(
+            JournalEntry.client_id == client_id,
+            JournalEntry.date >= first_day,
+            JournalEntry.date <= last_day,
+            JournalEntry.is_cancelled == False,
+            or_(
+                Account.account_number.startswith("118-01"),
+                Account.account_number.startswith("208-01"),
+            ),
+        )
+        .scalar()
+        or 0
+    )
+    if traspaso_entry:
+        iva_status = "cumplido"
+        iva_label = f"Traspasado (Póliza #{traspaso_entry.entry_number})"
+    elif iva_movs_cnt > 0:
+        iva_status = "pendiente"
+        iva_label = "Pendiente de traspaso"
+    else:
+        iva_status = "cumplido" if entries_cnt > 0 else "pendiente"
+        iva_label = "Sin saldo IVA pendiente" if entries_cnt > 0 else "Sin movimientos"
+
+    # 3. Depreciación aplicada
+    active_assets_cnt = (
+        db.query(func.count(FixedAsset.id))
+        .filter(FixedAsset.client_id == client_id, FixedAsset.is_active == True)
+        .scalar()
+        or 0
+    )
+    depr_entry = (
+        db.query(JournalEntry)
+        .filter(
+            JournalEntry.client_id == client_id,
+            JournalEntry.date >= first_day,
+            JournalEntry.date <= last_day,
+            JournalEntry.is_cancelled == False,
+            or_(
+                JournalEntry.description.ilike("%Depreciaci%"),
+                JournalEntry.reference.ilike("%DEPRECIAC%"),
+            ),
+        )
+        .first()
+    )
+    if depr_entry:
+        depr_status = "cumplido"
+        depr_label = f"Aplicada (Póliza #{depr_entry.entry_number})"
+    elif active_assets_cnt > 0:
+        depr_status = "pendiente"
+        depr_label = f"Pendiente ({active_assets_cnt} activos)"
+    else:
+        depr_status = "cumplido"
+        depr_label = "Sin activos sujetos a depr."
+
+    # 4. DIOT generada / lista (CFDIs recibidos del mes contabilizados + movimientos 118-01)
+    dt_start = datetime(year, month, 1, 0, 0, 0)
+    dt_end = datetime(year, month, calendar.monthrange(year, month)[1], 23, 59, 59)
+    unposted_recibidos = (
+        db.query(func.count(CFDIInvoice.id))
+        .filter(
+            CFDIInvoice.client_id == client_id,
+            CFDIInvoice.cfdi_type == "recibido",
+            CFDIInvoice.date >= dt_start,
+            CFDIInvoice.date <= dt_end,
+            or_(CFDIInvoice.is_posted == False, CFDIInvoice.journal_entry_id == None),
+        )
+        .scalar()
+        or 0
+    )
+    if unposted_recibidos > 0:
+        diot_status = "pendiente"
+        diot_label = f"{unposted_recibidos} CFDI(s) recibidos sin póliza"
+    elif iva_movs_cnt > 0 or entries_cnt > 0:
+        diot_status = "cumplido"
+        diot_label = "Lista para exportar TXT"
+    else:
+        diot_status = "pendiente"
+        diot_label = "Sin operaciones registradas"
+
+    return {
+        "balanza_cuadrada": {"status": balanza_status, "label": balanza_label, "diff": diff_balanza},
+        "iva_traspasado": {"status": iva_status, "label": iva_label},
+        "depreciacion_aplicada": {
+            "status": depr_status,
+            "label": depr_label,
+            "active_assets": active_assets_cnt,
+        },
+        "diot_generada": {
+            "status": diot_status,
+            "label": diot_label,
+            "unposted_recibidos": unposted_recibidos,
+        },
+    }
+
+
+@router.get("/executive-dashboard/{client_id}")
+def get_executive_dashboard(
+    client_id: int,
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "accountant", "client")),
+):
+    """
+    Centro de Control Ejecutivo 100% en Tiempo Real para Dashboard.jsx y ClientPortal.jsx:
+    1. Indicadores Financieros Reales del Cliente Seleccionado:
+       - Ingresos del mes vs Egresos del mes
+       - Utilidad Neta acumulada del ejercicio
+       - Saldo en Bancos (102), Cuentas por Cobrar (105), Cuentas por Pagar (201)
+       - CFDIs sin contabilizar y Complementos de Pago pendientes
+    2. Serie mensual comparativa de los 12 meses del año (Ingresos vs Costos y Gastos).
+    3. Semáforo de obligaciones del cliente activo y de la cartera del despacho.
+    """
+    if current_user.role == "client" and current_user.client_id != client_id:
+        raise HTTPException(status_code=403, detail="No autorizado para consultar este cliente")
+
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+
+    # Si no se envía año/mes, detectar automáticamente el último periodo con pólizas o usar fecha actual
+    latest_entry = (
+        db.query(JournalEntry)
+        .filter(JournalEntry.client_id == client_id, JournalEntry.is_cancelled == False)
+        .order_by(JournalEntry.date.desc())
+        .first()
+    )
+    today = date.today()
+    eff_year = year if year else (latest_entry.date.year if latest_entry and latest_entry.date else today.year)
+    eff_month = month if (month and 1 <= month <= 12) else (latest_entry.date.month if latest_entry and latest_entry.date else today.month)
+
+    first_day_month = date(eff_year, eff_month, 1)
+    last_day_month = date(eff_year, eff_month, calendar.monthrange(eff_year, eff_month)[1])
+    year_start = date(eff_year, 1, 1)
+    year_end = date(eff_year, 12, 31)
+
+    # 1. Consultar todas las líneas contables hasta el cierre del mes seleccionado para saldos de Balance (102, 105, 201)
+    balance_lines = (
+        db.query(
+            Account.account_number,
+            Account.name,
+            Account.nature,
+            func.sum(JournalLine.debit).label("deb"),
+            func.sum(JournalLine.credit).label("cred"),
+        )
+        .join(JournalEntry, JournalLine.entry_id == JournalEntry.id)
+        .join(Account, JournalLine.account_id == Account.id)
+        .filter(
+            JournalEntry.client_id == client_id,
+            JournalEntry.date <= last_day_month,
+            JournalEntry.is_cancelled == False,
+            or_(
+                Account.account_number.startswith("102"),
+                Account.account_number.startswith("105"),
+                Account.account_number.startswith("201"),
+            ),
+        )
+        .group_by(Account.id, Account.account_number, Account.name, Account.nature)
+        .all()
+    )
+
+    saldo_bancos_102 = 0.0
+    cuentas_por_cobrar_105 = 0.0
+    cuentas_por_pagar_201 = 0.0
+
+    for acc_num, acc_name, acc_nat, deb_val, cred_val in balance_lines:
+        num = acc_num or ""
+        d = float(deb_val or 0.0)
+        c = float(cred_val or 0.0)
+        if num.startswith("102"):
+            saldo_bancos_102 += (d - c)
+        elif num.startswith("105"):
+            cuentas_por_cobrar_105 += (d - c)
+        elif num.startswith("201"):
+            cuentas_por_pagar_201 += (c - d)
+
+    # 2. Movimientos de Resultados (cuentas 4xx, 5xx, 6xx, 7xx) durante todo el año para KPIs y gráfica de 12 meses
+    result_lines = (
+        db.query(
+            Account.account_number,
+            JournalEntry.date,
+            JournalLine.debit,
+            JournalLine.credit,
+        )
+        .join(JournalEntry, JournalLine.entry_id == JournalEntry.id)
+        .join(Account, JournalLine.account_id == Account.id)
+        .filter(
+            JournalEntry.client_id == client_id,
+            JournalEntry.date >= year_start,
+            JournalEntry.date <= year_end,
+            JournalEntry.is_cancelled == False,
+            or_(JournalEntry.reference == None, ~JournalEntry.reference.like("CIERRE-%")),
+        )
+        .all()
+    )
+
+    months_labels = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+    monthly_buckets = {
+        m_idx: {"ingresos": 0.0, "costos": 0.0, "gastos": 0.0}
+        for m_idx in range(1, 13)
+    }
+
+    for acc_num, e_date, deb_val, cred_val in result_lines:
+        if not acc_num or not e_date:
+            continue
+        first_digit = acc_num[0]
+        if first_digit not in ("4", "5", "6", "7"):
+            continue
+        m_idx = e_date.month
+        d = float(deb_val or 0.0)
+        c = float(cred_val or 0.0)
+
+        if acc_num.startswith("402"):
+            monthly_buckets[m_idx]["ingresos"] += -(d - c)
+        elif first_digit == "4" or acc_num.startswith(("702", "704")):
+            monthly_buckets[m_idx]["ingresos"] += (c - d)
+        elif acc_num.startswith("503"):
+            monthly_buckets[m_idx]["costos"] += -(c - d)
+        elif first_digit == "5":
+            monthly_buckets[m_idx]["costos"] += (d - c)
+        elif first_digit == "6" or acc_num.startswith(("701", "703")):
+            monthly_buckets[m_idx]["gastos"] += (d - c)
+
+    # Conteo de pólizas por mes en el año
+    entries_by_month_rows = (
+        db.query(
+            func.strftime("%m", JournalEntry.date).label("m_str"),
+            func.count(JournalEntry.id).label("cnt"),
+        )
+        .filter(
+            JournalEntry.client_id == client_id,
+            JournalEntry.date >= year_start,
+            JournalEntry.date <= year_end,
+            JournalEntry.is_cancelled == False,
+        )
+        .group_by("m_str")
+        .all()
+    )
+    entries_by_month = {int(r.m_str): int(r.cnt or 0) for r in entries_by_month_rows if r.m_str}
+
+    monthly_series = []
+    ingresos_acumulados = 0.0
+    egresos_acumulados = 0.0
+
+    for m_idx in range(1, 13):
+        ing = round(monthly_buckets[m_idx]["ingresos"], 2)
+        cos = round(monthly_buckets[m_idx]["costos"], 2)
+        gas = round(monthly_buckets[m_idx]["gastos"], 2)
+        egr = round(cos + gas, 2)
+        uti = round(ing - egr, 2)
+
+        if m_idx <= eff_month:
+            ingresos_acumulados += ing
+            egresos_acumulados += egr
+
+        monthly_series.append({
+            "month": m_idx,
+            "label": months_labels[m_idx - 1],
+            "ingresos": ing,
+            "costos": cos,
+            "gastos": gas,
+            "egresos": egr,
+            "utilidad": uti,
+            "polizas_count": entries_by_month.get(m_idx, 0),
+        })
+
+    current_m = monthly_series[eff_month - 1]
+    ingresos_mes = current_m["ingresos"]
+    costos_mes = current_m["costos"]
+    gastos_mes = current_m["gastos"]
+    egresos_mes = current_m["egresos"]
+    utilidad_mes = current_m["utilidad"]
+    utilidad_neta_acumulada = round(ingresos_acumulados - egresos_acumulados, 2)
+
+    # 3. CFDIs sin contabilizar y Complementos de Pago pendientes
+    unposted_cfdis = (
+        db.query(CFDIInvoice)
+        .filter(
+            CFDIInvoice.client_id == client_id,
+            or_(CFDIInvoice.is_posted == False, CFDIInvoice.journal_entry_id == None),
+        )
+        .all()
+    )
+    cfdis_sin_contabilizar_count = len(unposted_cfdis)
+    cfdis_sin_contabilizar_total = round(sum(float(c.total or 0.0) for c in unposted_cfdis), 2)
+
+    # Complementos de pago pendientes: Facturas PPD sin CFDI tipo 'P' relacionado + CFDIs tipo 'P' sin contabilizar
+    ppd_invoices = (
+        db.query(CFDIInvoice)
+        .filter(
+            CFDIInvoice.client_id == client_id,
+            CFDIInvoice.payment_method == "PPD",
+            or_(CFDIInvoice.tipo_comprobante == "I", CFDIInvoice.tipo_comprobante == None),
+        )
+        .all()
+    )
+    payment_complements = (
+        db.query(CFDIInvoice)
+        .filter(
+            CFDIInvoice.client_id == client_id,
+            CFDIInvoice.tipo_comprobante == "P",
+        )
+        .all()
+    )
+    covered_ppd_uuids = {
+        (p.related_uuid or "").strip().upper()
+        for p in payment_complements
+        if p.related_uuid
+    }
+    ppd_without_complement = [
+        inv for inv in ppd_invoices if (inv.uuid or "").strip().upper() not in covered_ppd_uuids
+    ]
+    unposted_complements = [
+        p for p in payment_complements if not p.is_posted or p.journal_entry_id is None
+    ]
+    complementos_pendientes_count = len(ppd_without_complement) + len(unposted_complements)
+    complementos_pendientes_monto = round(
+        sum(float(inv.total or 0.0) for inv in ppd_without_complement)
+        + sum(float(p.total or 0.0) for p in unposted_complements),
+        2,
+    )
+
+    total_journals_year = sum(entries_by_month.values())
+    journals_month = entries_by_month.get(eff_month, 0)
+
+    obligations = _evaluate_client_obligations(db, client_id, eff_year, eff_month)
+
+    months_full_sp = [
+        "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ]
+
+    return {
+        "client": {
+            "id": client.id,
+            "rfc": client.rfc,
+            "business_name": client.business_name,
+            "tax_regime": client.tax_regime or "",
+        },
+        "period": {
+            "year": eff_year,
+            "month": eff_month,
+            "month_name": months_full_sp[eff_month],
+            "label": f"{months_full_sp[eff_month]} {eff_year}",
+        },
+        "kpis": {
+            "ingresos_mes": ingresos_mes,
+            "costos_mes": costos_mes,
+            "gastos_mes": gastos_mes,
+            "egresos_mes": egresos_mes,
+            "utilidad_mes": utilidad_mes,
+            "ingresos_acumulados": round(ingresos_acumulados, 2),
+            "egresos_acumulados": round(egresos_acumulados, 2),
+            "utilidad_neta_acumulada": utilidad_neta_acumulada,
+            "saldo_bancos_102": round(saldo_bancos_102, 2),
+            "cuentas_por_cobrar_105": round(cuentas_por_cobrar_105, 2),
+            "cuentas_por_pagar_201": round(cuentas_por_pagar_201, 2),
+            "cfdis_sin_contabilizar_count": cfdis_sin_contabilizar_count,
+            "cfdis_sin_contabilizar_total": cfdis_sin_contabilizar_total,
+            "complementos_pendientes_count": complementos_pendientes_count,
+            "complementos_pendientes_monto": complementos_pendientes_monto,
+            "ppd_sin_complemento_count": len(ppd_without_complement),
+            "complementos_sin_poliza_count": len(unposted_complements),
+            "polizas_mes": journals_month,
+            "polizas_anio": total_journals_year,
+        },
+        "monthly_series": monthly_series,
+        "obligations": obligations,
+    }
+
+
+@router.get("/executive-portfolio-obligations")
+def get_executive_portfolio_obligations(
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "accountant")),
+):
+    """
+    Devuelve el Semáforo de Obligaciones para todos los clientes activos del despacho/auxiliar.
+    """
+    owner_id = get_effective_owner_id(db, current_user)
+    clients_q = db.query(Client).filter(Client.is_active == True, Client.owner_user_id == owner_id).order_by(Client.id.asc()).all()
+    if current_user.role != "admin":
+        allowed = set(current_user.assigned_client_ids or [])
+        clients_q = [c for c in clients_q if c.id in allowed]
+
+    today = date.today()
+    items = []
+    for c in clients_q:
+        latest_e = (
+            db.query(JournalEntry)
+            .filter(JournalEntry.client_id == c.id, JournalEntry.is_cancelled == False)
+            .order_by(JournalEntry.date.desc())
+            .first()
+        )
+        eff_y = year if year else (latest_e.date.year if latest_e and latest_e.date else today.year)
+        eff_m = month if (month and 1 <= month <= 12) else (latest_e.date.month if latest_e and latest_e.date else today.month)
+        ob = _evaluate_client_obligations(db, c.id, eff_y, eff_m)
+        items.append({
+            "client_id": c.id,
+            "rfc": c.rfc,
+            "business_name": c.business_name,
+            "tax_regime": c.tax_regime or "",
+            "year": eff_y,
+            "month": eff_m,
+            "obligations": ob,
+        })
+    return {"items": items}
 

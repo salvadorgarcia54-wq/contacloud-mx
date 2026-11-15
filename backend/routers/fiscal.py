@@ -2395,6 +2395,9 @@ def _format_fixed_asset(asset: FixedAsset, year: int, month: int, acc_map: Dict[
     }
 
 
+_compute_asset_row_from_model = _format_fixed_asset
+
+
 @router.post("/inversiones/{client_id}")
 def create_fixed_asset(
     client_id: int,
@@ -3433,13 +3436,13 @@ def get_isr_provisional_calculation(
     # Resolver Coeficiente de Utilidad vigente (si no está en el mes actual, tomar el más reciente del ejercicio)
     default_cu = 0.0
     for m_check in range(month, 0, -1):
-        if m_check in params_by_month and params_by_month[m_check].coeficiente_utilidad > 0:
-            default_cu = float(params_by_month[m_check].coeficiente_utilidad)
+        if m_check in params_by_month and float(params_by_month[m_check].coeficiente_utilidad or 0.0) > 0:
+            default_cu = float(params_by_month[m_check].coeficiente_utilidad or 0.0)
             break
     if default_cu == 0.0:
         for p in saved_params_list:
-            if p.coeficiente_utilidad > 0:
-                default_cu = float(p.coeficiente_utilidad)
+            if float(p.coeficiente_utilidad or 0.0) > 0:
+                default_cu = float(p.coeficiente_utilidad or 0.0)
                 break
 
     detected_regime = _detect_client_regime(client)
@@ -3645,7 +3648,7 @@ def get_isr_provisional_calculation(
     for m in range(1, month + 1):
         tot_dep_m = 0.0
         for asset in registered_assets:
-            row_a = _compute_asset_row_from_model(asset, year, m, acc_map)
+            row_a = _format_fixed_asset(asset, year, m, acc_map)
             tot_dep_m += float(row_a.get("cargo_gasto_mes_actual") or 0.0)
         deprec_by_month[m] = round(tot_dep_m, 2)
 
@@ -3659,7 +3662,7 @@ def get_isr_provisional_calculation(
 
     for m in range(1, month + 1):
         p_m = params_by_month.get(m)
-        cu_m = float(p_m.coeficiente_utilidad) if (p_m and p_m.coeficiente_utilidad > 0) else default_cu
+        cu_m = float(p_m.coeficiente_utilidad) if (p_m and float(p_m.coeficiente_utilidad or 0.0) > 0) else default_cu
         perdidas_m = float(p_m.perdidas_fiscales or 0.0) if p_m else (float(current_param.perdidas_fiscales or 0.0) if current_param else 0.0)
         ptu_m = float(p_m.ptu_pagada or 0.0) if p_m else (float(current_param.ptu_pagada or 0.0) if current_param else 0.0)
         estimulos_m = float(p_m.estimulos_fiscales or 0.0) if p_m else (float(current_param.estimulos_fiscales or 0.0) if current_param else 0.0)

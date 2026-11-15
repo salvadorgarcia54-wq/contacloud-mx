@@ -387,7 +387,7 @@ const AuditLog = () => {
       return {
         title: 'REPORTE DE TIEMPOS INVERTIDOS POR CLIENTE Y POR ACTIVIDAD',
         subtitle: 'Análisis de Tiempo Efectivo por Empresa, Módulo Contable/Fiscal y Auxiliar',
-        clientName: 'GARCIA SALAS — ASESORES DE NEGOCIO',
+        clientName: 'ITERUMX — PLATAFORMA CONTABLE Y FISCAL',
         clientRfc: 'DESPACHO CONTABLE Y FISCAL',
         period: dateRange && dateRange[0] && dateRange[1]
           ? `${dateRange[0].format('DD/MM/YYYY')} al ${dateRange[1].format('DD/MM/YYYY')}`
@@ -395,7 +395,7 @@ const AuditLog = () => {
         columns: columnsDef,
         rows,
         summaryCards,
-        notes: 'Reporte de control de tiempos invertidos generado en ContaCloud MX.',
+        notes: 'Reporte de control de tiempos invertidos generado en Iterumx.',
         filename: `Reporte_Tiempos_Invertidos_${dayjs().format('YYYYMMDD')}.xlsx`,
       };
     }
@@ -441,7 +441,7 @@ const AuditLog = () => {
     return {
       title: 'BITÁCORA DE ACTIVIDADES Y TIEMPOS POR AUXILIAR',
       subtitle: 'Supervisión de Productividad, Tiempos Invertidos y Control de Movimientos',
-      clientName: 'GARCIA SALAS — ASESORES DE NEGOCIO',
+      clientName: 'ITERUMX — PLATAFORMA CONTABLE Y FISCAL',
       clientRfc: 'DESPACHO CONTABLE Y FISCAL',
       period: dateRange && dateRange[0] && dateRange[1]
         ? `${dateRange[0].format('DD/MM/YYYY')} al ${dateRange[1].format('DD/MM/YYYY')}`
@@ -449,7 +449,7 @@ const AuditLog = () => {
       columns: columnsDef,
       rows,
       summaryCards,
-      notes: 'Registro de auditoría interna de ContaCloud MX. Documento confidencial para uso exclusivo del Titular del Despacho.',
+      notes: 'Registro de auditoría interna de Iterumx. Documento confidencial para uso exclusivo del Titular del Despacho.',
       filename: `Bitacora_Actividades_${dayjs().format('YYYYMMDD')}.xlsx`
     };
   };
@@ -1030,7 +1030,21 @@ const AuditLog = () => {
             {
               key: 'history',
               label: (
-                <span className="font-semibold flex items-center gap-1.5">
+                <span
+                  className="font-semibold text-sm px-3.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-all"
+                  style={
+                    activeTab === 'history'
+                      ? {
+                          backgroundColor: '#1E2C5E',
+                          color: '#ffffff',
+                          boxShadow: '0 2px 6px rgba(30, 44, 94, 0.25)',
+                        }
+                      : {
+                          backgroundColor: '#e2e8f0',
+                          color: '#334155',
+                        }
+                  }
+                >
                   <HistoryOutlined />
                   Historial Cronológico de Actividades ({total})
                 </span>
@@ -1082,7 +1096,21 @@ const AuditLog = () => {
             {
               key: 'time_analytics',
               label: (
-                <span className="font-semibold flex items-center gap-1.5">
+                <span
+                  className="font-semibold text-sm px-3.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-all"
+                  style={
+                    activeTab === 'time_analytics'
+                      ? {
+                          backgroundColor: '#1E2C5E',
+                          color: '#ffffff',
+                          boxShadow: '0 2px 6px rgba(30, 44, 94, 0.25)',
+                        }
+                      : {
+                          backgroundColor: '#e2e8f0',
+                          color: '#334155',
+                        }
+                  }
+                >
                   <ClockCircleOutlined />
                   Tiempos Invertidos por Cliente y por Actividad
                 </span>

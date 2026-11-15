@@ -871,8 +871,22 @@ const FiscalValidador69b = () => {
                 {
                   key: 'terceros',
                   label: (
-                    <span className="font-semibold flex items-center gap-1.5 text-sm">
-                      <SafetyCertificateOutlined className="text-blue-600" />
+                    <span
+                      className="font-semibold text-sm px-3.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-all"
+                      style={
+                        activeTab === 'terceros'
+                          ? {
+                              backgroundColor: '#1E2C5E',
+                              color: '#ffffff',
+                              boxShadow: '0 2px 6px rgba(30, 44, 94, 0.25)',
+                            }
+                          : {
+                              backgroundColor: '#e2e8f0',
+                              color: '#334155',
+                            }
+                      }
+                    >
+                      <SafetyCertificateOutlined />
                       Padrón de Proveedores y Clientes ({filteredTerceros.length})
                     </span>
                   ),
@@ -903,8 +917,22 @@ const FiscalValidador69b = () => {
                 {
                   key: 'alertas',
                   label: (
-                    <span className="font-semibold flex items-center gap-1.5 text-sm">
-                      <ExclamationCircleOutlined className="text-red-600" />
+                    <span
+                      className="font-semibold text-sm px-3.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-all"
+                      style={
+                        activeTab === 'alertas'
+                          ? {
+                              backgroundColor: '#1E2C5E',
+                              color: '#ffffff',
+                              boxShadow: '0 2px 6px rgba(30, 44, 94, 0.25)',
+                            }
+                          : {
+                              backgroundColor: '#e2e8f0',
+                              color: '#334155',
+                            }
+                      }
+                    >
+                      <ExclamationCircleOutlined />
                       CFDIs Señalados en 69-B y 49-B ({(data.alertas_69b_49b_detalle || []).length})
                     </span>
                   ),
@@ -930,8 +958,22 @@ const FiscalValidador69b = () => {
                 {
                   key: 'riesgos_cfdi',
                   label: (
-                    <span className="font-semibold flex items-center gap-1.5 text-sm">
-                      <AuditOutlined className="text-amber-600" />
+                    <span
+                      className="font-semibold text-sm px-3.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-all"
+                      style={
+                        activeTab === 'riesgos_cfdi'
+                          ? {
+                              backgroundColor: '#1E2C5E',
+                              color: '#ffffff',
+                              boxShadow: '0 2px 6px rgba(30, 44, 94, 0.25)',
+                            }
+                          : {
+                              backgroundColor: '#e2e8f0',
+                              color: '#334155',
+                            }
+                      }
+                    >
+                      <AuditOutlined />
                       Facturas con Riesgo Fiscal / Materialidad ({(data.riesgos_fiscales_cfdi || []).length})
                     </span>
                   ),
@@ -957,8 +999,22 @@ const FiscalValidador69b = () => {
                 {
                   key: 'buscador_catalogo',
                   label: (
-                    <span className="font-semibold flex items-center gap-1.5 text-sm">
-                      <DatabaseOutlined className="text-indigo-600" />
+                    <span
+                      className="font-semibold text-sm px-3.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-all"
+                      style={
+                        activeTab === 'buscador_catalogo'
+                          ? {
+                              backgroundColor: '#1E2C5E',
+                              color: '#ffffff',
+                              boxShadow: '0 2px 6px rgba(30, 44, 94, 0.25)',
+                            }
+                          : {
+                              backgroundColor: '#e2e8f0',
+                              color: '#334155',
+                            }
+                      }
+                    >
+                      <DatabaseOutlined />
                       Verificador de RFCs y Base SAT (69-B: {s.catalogo_total_69b || 0} · 49-B: {s.catalogo_total_49b || 0})
                     </span>
                   ),

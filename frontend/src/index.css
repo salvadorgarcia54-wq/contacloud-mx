@@ -19,3 +19,9 @@ body {
 .ant-upload-wrapper {
   display: block;
 }
+
+/* Estilo global para pestañas: ocultar línea inferior cuando las etiquetas usan fondo sólido */
+.ant-tabs .ant-tabs-ink-bar {
+  display: none !important;
+}
+

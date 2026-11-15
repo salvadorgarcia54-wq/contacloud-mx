@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 186" fill="none">
+  <!-- Green bottom diagonals -->
+  <path d="M22 162 L87 101 L96 111 L22 180 Z" fill="#57A82C"/>
+  <path d="M178 162 L113 101 L104 111 L178 180 Z" fill="#57A82C"/>
+  <!-- Navy Blue outer pillars and top V -->
+  <path d="M15 8 C19 4 24 5 28 9 L100 77 L172 9 C176 5 181 4 185 8 C188 10 190 14 190 19 L190 174 C190 181 182 185 176 180 L172 176 L172 34 L105 97 C102 100 98 100 95 97 L28 34 L28 176 L24 180 C18 185 10 181 10 174 L10 19 C10 14 12 10 15 8 Z" fill="#1E2C5E"/>
+</svg>

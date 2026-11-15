@@ -7,6 +7,7 @@ class Client(Base):
     __tablename__ = 'clients'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    owner_user_id = Column(Integer, nullable=True, index=True)
     rfc = Column(String(13), unique=True, nullable=False, index=True)
     business_name = Column(String(300), nullable=False)
     legal_name = Column(String(300))

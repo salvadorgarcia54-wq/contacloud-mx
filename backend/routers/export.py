@@ -17,6 +17,7 @@ from routers.auth import require_role
 router = APIRouter(prefix="/api/export", tags=["export"])
 
 LOGO_PATHS = [
+    r"C:\Users\MAQRFDCSVDR01\.gemini\antigravity\brain\0e5bad98-ba0b-4e0f-b1bb-1944704a7a2d\.user_uploaded\media_1794175443714_60b4153c.png",
     os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "src", "assets", "logo.png")),
     os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "public", "logo.png")),
 ]
@@ -104,7 +105,7 @@ def generate_professional_xlsx(
     start_title_col = 3 if num_cols >= 4 else 2
     end_title_col = num_cols
 
-    ws.cell(row=1, column=start_title_col, value="GARCIA SALAS — ASESORES DE NEGOCIO | PAPEL DE TRABAJO CONTABLE Y FISCAL").font = font_firm
+    ws.cell(row=1, column=start_title_col, value="ITERUMX — PLATAFORMA CONTABLE Y FISCAL | PAPEL DE TRABAJO").font = font_firm
     ws.cell(row=2, column=start_title_col, value=(req.title or "REPORTE FINANCIERO").upper()).font = font_title
 
     company_line = req.business_name or ""
@@ -216,7 +217,7 @@ def generate_professional_xlsx(
     ws.cell(
         row=current_row,
         column=1,
-        value=f"Papel de trabajo generado por: {current_user.full_name or current_user.username} ({current_user.position or 'Despacho Garcia Salas'})"
+        value=f"Papel de trabajo generado por: {current_user.full_name or current_user.username} ({current_user.position or 'Iterumx Cloud'})"
     ).font = font_meta
 
     # Ajustar anchos de columna respetando espacio para el logo en A y B
@@ -239,7 +240,7 @@ def generate_professional_xlsx(
     ws.page_margins.bottom = 0.90
     ws.page_margins.header = 0.40
     ws.page_margins.footer = 0.40
-    ws.oddFooter.left.text = "Garcia Salas — Asesores de Negocio"
+    ws.oddFooter.left.text = "Iterumx — Plataforma Contable y Fiscal"
     ws.oddFooter.right.text = "Página &P de &N"
 
     # Insertar logotipo corporativo de forma nativa con openpyxl + Pillow

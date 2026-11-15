@@ -1,10 +1,11 @@
 import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Spin } from 'antd';
 import { useAuth } from '../contexts/AuthContext';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -15,6 +16,10 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!isAuthenticated) {
+    // Al entrar a la raíz del dominio sin sesión activa, mostrar primero la Landing Page
+    if (location.pathname === '/' || location.pathname === '') {
+      return <Navigate to="/landing" replace />;
+    }
     return <Navigate to="/login" replace />;
   }
 

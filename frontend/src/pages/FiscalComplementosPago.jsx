@@ -1085,7 +1085,21 @@ const FiscalComplementosPago = () => {
           {
             key: 'conciliacion',
             label: (
-              <span className="font-semibold text-sm flex items-center gap-1.5">
+              <span
+                className="font-semibold text-sm px-3.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-all"
+                style={
+                  activeTab === 'conciliacion'
+                    ? {
+                        backgroundColor: '#1E2C5E',
+                        color: '#ffffff',
+                        boxShadow: '0 2px 6px rgba(30, 44, 94, 0.25)',
+                      }
+                    : {
+                        backgroundColor: '#e2e8f0',
+                        color: '#334155',
+                      }
+                }
+              >
                 <FileProtectOutlined />
                 <span>Conciliación de Facturas PPD vs Complementos</span>
                 <Badge count={displayedFacturas.length} overflowCount={9999} style={{ backgroundColor: '#108ee9' }} />
@@ -1123,7 +1137,21 @@ const FiscalComplementosPago = () => {
           {
             key: 'reps_catalogo',
             label: (
-              <span className="font-semibold text-sm flex items-center gap-1.5">
+              <span
+                className="font-semibold text-sm px-3.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-all"
+                style={
+                  activeTab === 'reps_catalogo'
+                    ? {
+                        backgroundColor: '#1E2C5E',
+                        color: '#ffffff',
+                        boxShadow: '0 2px 6px rgba(30, 44, 94, 0.25)',
+                      }
+                    : {
+                        backgroundColor: '#e2e8f0',
+                        color: '#334155',
+                      }
+                }
+              >
                 <PayCircleOutlined />
                 <span>Repositorio de Complementos de Pago Cargados</span>
                 <Badge count={data?.reps_catalogo?.length || 0} overflowCount={9999} style={{ backgroundColor: '#52c41a' }} />

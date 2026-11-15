@@ -24,10 +24,12 @@ import {
   TableOutlined,
   KeyOutlined,
   CustomerServiceOutlined,
+  CrownOutlined,
+  CloudServerOutlined,
 } from '@ant-design/icons';
 import { useClient } from './Layout';
 import { useAuth } from '../contexts/AuthContext';
-import logoImg from '../assets/logo.png';
+import IterumxLogo from './IterumxLogo';
 
 const { Sider } = Layout;
 
@@ -57,7 +59,17 @@ const Sidebar = ({ collapsed, onCollapse }) => {
   const selectedClient = localClient;
 
   const handleMenuClick = ({ key }) => {
-    const isClientRoute = !['/', '/clients', '/users', '/temp-passwords', '/audit-log', '/portal', '/support'].includes(key);
+    const isClientRoute = ![
+      '/',
+      '/clients',
+      '/users',
+      '/temp-passwords',
+      '/audit-log',
+      '/portal',
+      '/support',
+      '/saas-subscription',
+      '/saas-console',
+    ].includes(key);
     
     if (isClientRoute && !selectedClient && user?.role !== 'client') {
       message.warning('Por favor, selecciona un cliente primero.');
@@ -116,6 +128,18 @@ const Sidebar = ({ collapsed, onCollapse }) => {
         { key: '/bank-reconciliation/{clientId}', icon: <BankOutlined />, label: 'Conciliación Bancaria' },
       ]
     },
+    ...(user?.role === 'admin'
+      ? [
+          { type: 'divider' },
+          {
+            type: 'group',
+            label: 'SUSCRIPCIÓN Y PLANES',
+            children: [
+              { key: '/saas-subscription', icon: <CrownOutlined />, label: 'Mi Suscripción y Plan' },
+            ],
+          },
+        ]
+      : []),
     { type: 'divider' },
     { type: 'group', label: 'AYUDA Y ASISTENCIA', children: [
         { key: '/support', icon: <CustomerServiceOutlined />, label: 'Soporte Técnico' },
@@ -152,19 +176,26 @@ const Sidebar = ({ collapsed, onCollapse }) => {
     }
   ];
 
-  const menuItems = user?.role === 'client' ? clientItems : accountantItems;
+  const isSaasSuperAdmin = String(user?.username || '').trim().toLowerCase() === 'sgadmin';
+
+  const superAdminItems = [
+    { key: '/saas-console', icon: <CloudServerOutlined />, label: 'Organizaciones y Planes' },
+  ];
+
+  const menuItems = isSaasSuperAdmin
+    ? superAdminItems
+    : user?.role === 'client'
+    ? clientItems
+    : accountantItems;
 
   return (
     <Sider collapsible collapsed={collapsed} onCollapse={onCollapse} width={260} theme="dark">
       <div className="p-3 border-b border-gray-700/60 mb-2">
-        <div className="bg-white rounded-lg py-2.5 px-3 flex items-center justify-center shadow-sm">
-          <img 
-            src={logoImg} 
-            alt="Garcia Salas Asesores de Negocio" 
-            className={`transition-all duration-300 object-contain ${
-              collapsed ? 'h-8 w-8' : 'h-12 max-w-[205px]'
-            }`} 
-          />
+        <div
+          className="bg-white rounded-lg py-2.5 px-3 flex items-center justify-center shadow-sm cursor-pointer"
+          onClick={() => navigate(isSaasSuperAdmin ? '/saas-console' : '/')}
+        >
+          <IterumxLogo collapsed={collapsed} size="md" />
         </div>
       </div>
       <Menu

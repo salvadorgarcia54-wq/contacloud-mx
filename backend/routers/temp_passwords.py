@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import uuid
 import calendar
 
-from database import get_db, engine, Base
+from database import get_db, engine, Base, get_effective_owner_id
 from models.user import User
 from models.client import Client
 from models.temp_password import TempPassword
@@ -169,9 +169,16 @@ def list_temp_passwords(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin")),
 ):
-    items = db.query(TempPassword).order_by(TempPassword.id.desc()).limit(200).all()
-    users = db.query(User).all()
-    clients = db.query(Client).all()
+    owner_id = get_effective_owner_id(db, current_user)
+    items = (
+        db.query(TempPassword)
+        .filter(TempPassword.created_by_id == owner_id)
+        .order_by(TempPassword.id.desc())
+        .limit(200)
+        .all()
+    )
+    users = db.query(User).filter((User.id == owner_id) | (User.owner_user_id == owner_id)).all()
+    clients = db.query(Client).filter(Client.owner_user_id == owner_id).all()
     users_map = {u.id: u for u in users}
     clients_map = {c.id: c for c in clients}
     return [_serialize_temp_password(tp, users_map, clients_map) for tp in items]

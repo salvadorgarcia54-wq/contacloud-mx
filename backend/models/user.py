@@ -18,6 +18,7 @@ class User(Base):
     can_create_clients = Column(Boolean, default=False)
     assigned_client_ids_json = Column("assigned_client_ids", Text, nullable=True, default="[]")
     role = Column(String(20), nullable=False, default='accountant')
+    owner_user_id = Column(Integer, nullable=True, index=True)
     client_id = Column(Integer, ForeignKey('clients.id'), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)

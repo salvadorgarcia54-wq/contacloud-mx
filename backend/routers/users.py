@@ -5,7 +5,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 import json
 
-from database import get_db, ensure_user_columns
+from database import get_db, ensure_user_columns, get_effective_owner_id
 from models.user import User
 from schemas.user import UserCreate, UserUpdate, UserResponse
 from routers.auth import require_role, get_password_hash, ensure_demo_assistant_user
@@ -29,10 +29,16 @@ def list_staff_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin"))
 ):
-    ensure_demo_assistant_user(db)
+    owner_id = get_effective_owner_id(db, current_user)
+    if (current_user.username or "").strip().lower() == "admin":
+        ensure_demo_assistant_user(db)
     users = (
         db.query(User)
-        .filter(User.role.in_(["admin", "accountant"]))
+        .filter(
+            User.role.in_(["admin", "accountant"]),
+            User.username != "sgadmin",
+            (User.id == owner_id) | (User.owner_user_id == owner_id),
+        )
         .order_by(User.id.asc())
         .all()
     )
@@ -46,6 +52,7 @@ def create_staff_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin"))
 ):
+    owner_id = get_effective_owner_id(db, current_user)
     clean_username = (data.username or "").strip()
     if not clean_username:
         raise HTTPException(status_code=400, detail="El nombre de usuario es obligatorio")
@@ -76,6 +83,7 @@ def create_staff_user(
         photo_url=data.photo_url or None,
         can_create_clients=bool(data.can_create_clients) if role != "admin" else True,
         role=role,
+        owner_user_id=owner_id,
         is_active=True if data.is_active is None else bool(data.is_active),
     )
     new_user.assigned_client_ids = data.assigned_client_ids or []

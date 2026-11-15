@@ -2105,8 +2105,22 @@ const FiscalIsr = () => {
                 {
                   key: 'cedula',
                   label: (
-                    <span className="font-semibold flex items-center gap-1.5 text-sm">
-                      <CalendarOutlined className="text-indigo-600" />
+                    <span
+                      className="font-semibold text-sm px-3.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-all"
+                      style={
+                        activeTab === 'cedula'
+                          ? {
+                              backgroundColor: '#1E2C5E',
+                              color: '#ffffff',
+                              boxShadow: '0 2px 6px rgba(30, 44, 94, 0.25)',
+                            }
+                          : {
+                              backgroundColor: '#e2e8f0',
+                              color: '#334155',
+                            }
+                      }
+                    >
+                      <CalendarOutlined />
                       Cédula Anual Acumulada (Enero a {monthNames[month - 1]} {year})
                     </span>
                   ),
@@ -2131,8 +2145,22 @@ const FiscalIsr = () => {
                 {
                   key: 'emitidos',
                   label: (
-                    <span className="font-semibold flex items-center gap-1.5 text-sm">
-                      <ArrowUpOutlined className="text-blue-600" />
+                    <span
+                      className="font-semibold text-sm px-3.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-all"
+                      style={
+                        activeTab === 'emitidos'
+                          ? {
+                              backgroundColor: '#1E2C5E',
+                              color: '#ffffff',
+                              boxShadow: '0 2px 6px rgba(30, 44, 94, 0.25)',
+                            }
+                          : {
+                              backgroundColor: '#e2e8f0',
+                              color: '#334155',
+                            }
+                      }
+                    >
+                      <ArrowUpOutlined />
                       CFDI de Ingresos y Retenciones ISR ({activeEmitidosAll.length} de {emitidosAll.length})
                     </span>
                   ),
@@ -2188,8 +2216,22 @@ const FiscalIsr = () => {
                 {
                   key: 'recibidos',
                   label: (
-                    <span className="font-semibold flex items-center gap-1.5 text-sm">
-                      <ArrowDownOutlined className="text-purple-600" />
+                    <span
+                      className="font-semibold text-sm px-3.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-all"
+                      style={
+                        activeTab === 'recibidos'
+                          ? {
+                              backgroundColor: '#1E2C5E',
+                              color: '#ffffff',
+                              boxShadow: '0 2px 6px rgba(30, 44, 94, 0.25)',
+                            }
+                          : {
+                              backgroundColor: '#e2e8f0',
+                              color: '#334155',
+                            }
+                      }
+                    >
+                      <ArrowDownOutlined />
                       CFDI Deducciones Autorizadas ({activeRecibidosAll.length} de {recibidosAll.length})
                     </span>
                   ),

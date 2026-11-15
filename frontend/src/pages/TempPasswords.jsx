@@ -229,7 +229,7 @@ const TempPasswords = () => {
     const expStr = formatDateTime(record.expires_at);
     const durStr = `${record.duration_value} ${UNIT_LABELS[record.duration_unit] || record.duration_unit}`;
     const lines = [
-      '🔐 *CONTACLOUD MX — CONTRASEÑA TEMPORAL DE 32 DÍGITOS (UUID)*',
+      '🔐 *ITERUMX — CONTRASEÑA TEMPORAL DE 32 DÍGITOS (UUID)*',
       '',
       `🔑 Clave (UUID): ${record.token_uuid}`,
       `🔢 32 dígitos continuos: ${record.token_clean}`,

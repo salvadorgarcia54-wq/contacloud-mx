@@ -57,6 +57,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const setAuthSession = (tokenVal, userObj) => {
+    localStorage.removeItem('contacloud_selected_client');
+    sessionStorage.removeItem('contacloud_active_client_session');
+    localStorage.setItem('contacloud_token', tokenVal);
+    setToken(tokenVal);
+    setUser(userObj);
+  };
+
   const logout = () => {
     localStorage.removeItem('contacloud_token');
     localStorage.removeItem('contacloud_selected_client');
@@ -67,7 +75,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, isAuthenticated: !!user, login, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, isAuthenticated: !!user, login, setAuthSession, logout }}>
       {children}
     </AuthContext.Provider>
   );

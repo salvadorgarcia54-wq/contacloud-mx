@@ -1,21 +1,22 @@
 import React, { useState } from 'react';
 import { Form, Input, Button, Card, Typography, Alert } from 'antd';
-import { UserOutlined, LockOutlined } from '@ant-design/icons';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { UserOutlined, LockOutlined, RocketOutlined, AppstoreOutlined } from '@ant-design/icons';
+import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import logoImg from '../assets/logo.png';
+import IterumxLogo from '../components/IterumxLogo';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 const Login = () => {
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   if (isAuthenticated) {
-    return <Navigate to="/" replace />;
+    const isSuperAdmin = String(user?.username || '').trim().toLowerCase() === 'sgadmin';
+    return <Navigate to={isSuperAdmin ? '/saas-console' : '/'} replace />;
   }
 
   const onFinish = async (values) => {
@@ -23,33 +24,34 @@ const Login = () => {
     setError('');
     try {
       await login(values.username, values.password);
-      navigate('/');
+      const isSuperAdmin = String(values.username || '').trim().toLowerCase() === 'sgadmin';
+      navigate(isSuperAdmin ? '/saas-console' : '/');
     } catch (err) {
-      setError('Credenciales incorrectas o error de red. Intente nuevamente.');
+      const serverDetail = err?.response?.data?.detail;
+      if (serverDetail) {
+        setError(String(serverDetail));
+      } else if (!err?.response || err?.response?.status >= 500) {
+        setError(
+          'El servidor de Iterumx (puerto 8000) no está activo en este momento. Ejecute el acceso directo "Iterumx" en su Escritorio (o start_iterumx.bat) e intente de nuevo.'
+        );
+      } else {
+        setError('Credenciales incorrectas o error de red. Intente nuevamente.');
+      }
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickDemoAssistant = () => {
-    form.setFieldsValue({ username: 'auxiliar', password: 'auxiliar123' });
-    onFinish({ username: 'auxiliar', password: 'auxiliar123' });
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#1890ff] to-[#001529] p-4">
       <Card className="w-full max-w-md shadow-2xl rounded-lg">
         <div className="text-center mb-6">
-          <div className="bg-white p-4 rounded-xl inline-block mb-3 border border-blue-100 shadow-sm w-full max-w-[280px]">
-            <img 
-              src={logoImg} 
-              alt="Garcia Salas Asesores de Negocio" 
-              className="h-20 w-auto max-w-full mx-auto object-contain" 
-            />
+          <div className="bg-white p-4 rounded-xl inline-flex items-center justify-center mb-3 border border-blue-100 shadow-sm w-full max-w-[300px]">
+            <IterumxLogo size="xl" showSubtitle subtitle="PLATAFORMA CONTABLE Y FISCAL" />
           </div>
           <div>
             <Text type="secondary" className="text-xs font-semibold tracking-wider uppercase text-gray-500">
-              Sistema de Contabilidad Fiscal
+              Sistema de Contabilidad e Inteligencia Fiscal
             </Text>
           </div>
         </div>
@@ -78,19 +80,14 @@ const Login = () => {
           </Form.Item>
         </Form>
 
-        <div className="pt-3 border-t border-gray-100 text-center">
-          <div className="text-[11px] text-gray-500 mb-2">
-            Cuenta Demo de Auxiliar Contable (sin acceso a módulos del Socio/Titular):
-          </div>
-          <Button
-            size="small"
-            type="dashed"
-            onClick={handleQuickDemoAssistant}
-            loading={loading}
-            className="text-xs text-blue-700 border-blue-300 hover:border-blue-500 font-medium"
-          >
-            👤 Ingresar como Auxiliar Demo (auxiliar / auxiliar123)
-          </Button>
+        <div className="pt-3 border-t border-gray-100 flex flex-wrap items-center justify-center gap-3 text-xs">
+          <Link to="/landing" className="font-semibold text-blue-700 hover:underline flex items-center gap-1">
+            <AppstoreOutlined /> Ver Planes y Precios
+          </Link>
+          <span className="text-gray-300">|</span>
+          <Link to="/register" className="font-bold text-emerald-700 hover:underline flex items-center gap-1">
+            <RocketOutlined /> Crear Cuenta Gratis (14 días)
+          </Link>
         </div>
       </Card>
     </div>

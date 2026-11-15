@@ -1553,7 +1553,21 @@ const CfdiUpload = () => {
           {
             key: 'emitido',
             label: (
-              <span className="font-semibold text-base px-2">
+              <span
+                className="font-semibold text-base px-4 py-2 rounded-lg inline-flex items-center transition-all"
+                style={
+                  activeTab === 'emitido'
+                    ? {
+                        backgroundColor: '#1E2C5E',
+                        color: '#ffffff',
+                        boxShadow: '0 2px 6px rgba(30, 44, 94, 0.25)',
+                      }
+                    : {
+                        backgroundColor: '#e2e8f0',
+                        color: '#334155',
+                      }
+                }
+              >
                 📤 CFDI Emitidos (Ventas a Clientes)
                 <Badge count={activeTab === 'emitido' ? pendingCount : 0} overflowCount={999} className="ml-2" />
               </span>
@@ -1562,7 +1576,21 @@ const CfdiUpload = () => {
           {
             key: 'recibido',
             label: (
-              <span className="font-semibold text-base px-2">
+              <span
+                className="font-semibold text-base px-4 py-2 rounded-lg inline-flex items-center transition-all"
+                style={
+                  activeTab === 'recibido'
+                    ? {
+                        backgroundColor: '#1E2C5E',
+                        color: '#ffffff',
+                        boxShadow: '0 2px 6px rgba(30, 44, 94, 0.25)',
+                      }
+                    : {
+                        backgroundColor: '#e2e8f0',
+                        color: '#334155',
+                      }
+                }
+              >
                 📥 CFDI Recibidos (Gastos y Compras de Proveedores)
                 <Badge count={activeTab === 'recibido' ? pendingCount : 0} overflowCount={999} className="ml-2" />
               </span>
@@ -1571,7 +1599,21 @@ const CfdiUpload = () => {
           {
             key: 'nomina',
             label: (
-              <span className="font-semibold text-base px-2">
+              <span
+                className="font-semibold text-base px-4 py-2 rounded-lg inline-flex items-center transition-all"
+                style={
+                  activeTab === 'nomina'
+                    ? {
+                        backgroundColor: '#1E2C5E',
+                        color: '#ffffff',
+                        boxShadow: '0 2px 6px rgba(30, 44, 94, 0.25)',
+                      }
+                    : {
+                        backgroundColor: '#e2e8f0',
+                        color: '#334155',
+                      }
+                }
+              >
                 👥 CFDI de Nómina (Sueldos y Salarios)
                 <Badge count={activeTab === 'nomina' ? pendingCount : 0} overflowCount={999} className="ml-2" />
               </span>

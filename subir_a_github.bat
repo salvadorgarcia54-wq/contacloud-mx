@@ -52,10 +52,10 @@ if %errorlevel% neq 0 (
     git config --global user.email "salvadorgarcia54-wq@users.noreply.github.com"
 )
 
-echo [2/4] Inicializando repositorio y agregando archivos del proyecto...
+echo [2/4] Agregando todos los cambios recientes de Iterumx al repositorio...
 git init
-git add .
-git commit -m "Version inicial lista para produccion"
+git add -A
+git commit -m "Actualizacion Iterumx lista para produccion"
 git branch -M main
 
 echo.
@@ -64,8 +64,8 @@ git remote remove origin >nul 2>nul
 git remote add origin https://github.com/salvadorgarcia54-wq/contacloud-mx.git
 
 echo.
-echo [4/4] Subiendo codigo a GitHub (Se abrira una ventana para iniciar sesion en GitHub si es la primera vez)...
-git push -u origin main
+echo [4/4] Subiendo nueva version a GitHub...
+git push -u origin main --force
 
 echo.
 echo ============================================================
